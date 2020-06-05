@@ -1,6 +1,13 @@
+import requests
+from flask import Flask,render_template,request,url_for,redirect
+from flask_sqlalchemy import SQLAlchemy
+app = Flask(__name__)
+from flask_mysqldb import MySQL
+mysql = MySQL(app)
 # -*- coding: utf-8 -*-
 
 import os
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 import flask
 import requests
 
@@ -168,3 +175,15 @@ if __name__ == '__main__':
   # Specify a hostname and port that are set as a valid redirect URI
   # for your API project in the Google API Console.
   app.run('localhost', 5000, debug=True)
+
+    #print(r.text)
+    #return r.text
+#@app.route("/",methods=['GET','POST'])
+#def index():
+#    if request.method == "POST":
+#        # get url that the user has entered
+#        name = request.form['username']
+#       print(name)
+#        passw = request.form['password']
+#        print(passw)         
+#    return render_template('index.html')
