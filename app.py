@@ -1,189 +1,204 @@
-import requests
-from flask import Flask,render_template,request,url_for,redirect
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+import datetime
+import json
+import time
+from flask import request
+from urllib2 import urlopen
+from urllib2 import Request, urlopen, URLError
+#from urllib.request import urlopen,URLError
+#from urllib2 import Request, urlopen, URLError
+import json
+import mimetools
+BOUNDARY = mimetools.choose_boundary()
 app = Flask(__name__)
-from flask_mysqldb import MySQL
-mysql = MySQL(app)
-# -*- coding: utf-8 -*-
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test2.db'
+db = SQLAlchemy(app)
+class User(db.Model):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    avatar = db.Column(db.String(200))
+    active = db.Column(db.Boolean, default=False)
+    tokens = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.now())
+    
+    def __repr__(self):
+        return str([str(self.id),str(self.email),str(self.name),str(avatar),str(self.active),str(self.tokens),str(self.created_at)])
+####################### calling of refresh token function ###############################
+BOUNDARY = mimetools.choose_boundary()
+CRLF = '\r\n'
+obj = User.query.filter(row=condition).first()
+obj.column=new
+db.session.commit()
+def EncodeMultiPart(fields, files, file_type='application/xml'):
+    """Encodes list of parameters and files for HTTP multipart format.
 
-import os
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-import flask
+    Args:
+      fields: list of tuples containing name and value of parameters.
+      files: list of tuples containing param name, filename, and file contents.
+      file_type: string if file type different than application/xml.
+    Returns:
+      A string to be sent as data for the HTTP post request.
+    """
+    lines = []
+    for (key, value) in fields:
+      lines.append('--' + BOUNDARY)
+      lines.append('Content-Disposition: form-data; name="%s"' % key)
+      lines.append('')  # blank line
+      lines.append(value)
+    for (key, filename, value) in files:
+      lines.append('--' + BOUNDARY)
+      lines.append(
+          'Content-Disposition: form-data; name="%s"; filename="%s"'
+          % (key, filename))
+      lines.append('Content-Type: %s' % file_type)
+      lines.append('')  # blank line
+      lines.append(value)
+    lines.append('--' + BOUNDARY + '--')
+    lines.append('')  # blank line
+    #print(CRLF.join(lines))
+    return CRLF.join(lines)
+def refresh_token(val):
+    #print(val)
+    url = "https://oauth2.googleapis.com/token"
+    headers = [
+             ("grant_type",  "refresh_token"),
+             ("client_id", "552833547680-pf5eserplcmvsnmt18jp4197ru21u0u5.apps.googleusercontent.com"),
+             ("client_secret", "8x44hBSsgxOwBezTqXqMbNQD"),
+             ("refresh_token",val),
+             ]
+#ya29.a0AfH6SMD9tm8FBT7a7woiFqGb4G4Mn4ZM9gMmGd75YJVSGU9Gyb_dJTUYF9hN3wqkL5FU-6tlos0LGYWaOQ_se9Ub43fT5wWbvy3GaXWsWYFjdjm-50uoECQnu_VHQU6zh7p8huR_MJfohCJCNAJpWriRT8kTcu-XvRk
+    files = []
+    edata = EncodeMultiPart(headers, files, file_type='text/plain')
+    #print(EncodeMultiPart(headers, files, file_type='text/plain'))
+    headers = {}
+    request = Request(url, headers=headers)
+    request.add_data(edata)
+
+    request.add_header('Content-Length', str(len(edata)))
+    request.add_header('Content-Type', 'multipart/form-data;boundary=%s' % BOUNDARY)
+    response = urlopen(request).read()
+    response = json.loads(response) 
+    return response["access_token"]
+########################end of refresh token functn ##############################
+
+
+
+############################## sleep read functn############################
 import requests
+import json
 
-import google.oauth2.credentials
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
+def read_activity(startTimeMillis, endTimeMillis, access_token, durationMillis=3600000):
+    '''
+    returns the response containing activities in range [startTimeMillis, endTimeMillis]
+    '''
+    headers = {
+    'Content-Type': 'application/json',
+    }
+    params = (
+        ('access_token', access_token),
+    )
+    body = '{\n  "aggregateBy": [{\n    "dataTypeName": "com.google.activity.segment"\n  }],\n  "bucketByTime": { "durationMillis": '+ str(durationMillis) + ' },\n  "startTimeMillis": ' + str(startTimeMillis) + ',\n  "endTimeMillis": ' + str(endTimeMillis) + '\n}\n'
 
-# This variable specifies the name of a file that contains the OAuth 2.0
-# information for this application, including its client_id and client_secret.
-CLIENT_SECRETS_FILE = "client_secret.json"
+    url = "https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate"
 
-# This OAuth 2.0 access scope allows for full read/write access to the
-# authenticated user's account and requires requests to use an SSL connection.
-SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly']
-API_SERVICE_NAME = 'drive'
-API_VERSION = 'v2'
+    resp = requests.post(url=url, headers=headers, params=params, data=body)
 
-app = flask.Flask(__name__)
-# Note: A secret key is included in the sample so that it works.
-# If you use this code in your application, replace this with a truly secret
-# key. See https://flask.palletsprojects.com/quickstart/#sessions.
-app.secret_key = 'REPLACE ME - this value is here as a placeholder.'
+    return resp
+def sleep_code_in(resp):
+    '''
+    returns a bool value 'true' if user is sleeping
+    '''
+    # L = resp["bucket"][0]["dataset"][0]["point"]
 
+    # for i in range(len(L)):
+    #     L1 = L[i]["value"]
+    #     for j in range(len(L1)):
+    #         if L1[j]["intVal"] in [72, 109, 110, 111, 112]:
+    #             # return True
+    #             return L1[j]["intVal"]
 
-@app.route('/')
-def index():
-  return print_index_table()
+    # return -1
+    try:
+      L1 = resp["bucket"]
 
+      for i1 in range(len(L1)):
+         L2 = L1[i1]["dataset"]
+         for i2 in range(len(L2)):
+             L3 = L2[i2]["point"]
+             for i3 in range(len(L3)):
+                 L4 = L3[i3]["value"]
+                 for i4 in range(len(L4)):
+                     if L4[i4]["intVal"] in [72, 109, 110, 111, 112]:
+                         return True
+                        # return L4[i4]["intVal"]
 
-@app.route('/test')
-def test_api_request():
-  if 'credentials' not in flask.session:
-    return flask.redirect('authorize')
+    # return -1
+      return False
+    except:
+      return 0
 
-  # Load credentials from the session.
-  credentials = google.oauth2.credentials.Credentials(
-      **flask.session['credentials'])
+def is_sleeping(startTimeMillis, endTimeMillis, access_token):
+    resp = read_activity(startTimeMillis, endTimeMillis, access_token)
+    return sleep_code_in(resp.json())
+##########################################################################
 
-  drive = googleapiclient.discovery.build(
-      API_SERVICE_NAME, API_VERSION, credentials=credentials)
-
-  files = drive.files().list().execute()
-
-  # Save credentials back to session in case access token was refreshed.
-  # ACTION ITEM: In a production app, you likely want to save these
-  #              credentials in a persistent database instead.
-  flask.session['credentials'] = credentials_to_dict(credentials)
-
-  return flask.jsonify(**files)
-
-
-@app.route('/authorize')
-def authorize():
-  # Create flow instance to manage the OAuth 2.0 Authorization Grant Flow steps.
-  flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-      CLIENT_SECRETS_FILE, scopes=SCOPES)
-
-  # The URI created here must exactly match one of the authorized redirect URIs
-  # for the OAuth 2.0 client, which you configured in the API Console. If this
-  # value doesn't match an authorized URI, you will get a 'redirect_uri_mismatch'
-  # error.
-  flow.redirect_uri = flask.url_for('oauth2callback', _external=True)
-
-  authorization_url, state = flow.authorization_url(
-      # Enable offline access so that you can refresh an access token without
-      # re-prompting the user for permission. Recommended for web server apps.
-      access_type='offline',
-      # Enable incremental authorization. Recommended as a best practice.
-      include_granted_scopes='true')
-
-  # Store the state so the callback can verify the auth server response.
-  flask.session['state'] = state
-
-  return flask.redirect(authorization_url)
-
-
-@app.route('/oauth2callback')
-@app.route('/widget')
-def oauth2callback():
-  # Specify the state when creating the flow in the callback so that it can
-  # verified in the authorization server response.
-  state = flask.session['state']
-
-  flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-      CLIENT_SECRETS_FILE, scopes=SCOPES, state=state)
-  flow.redirect_uri = flask.url_for('oauth2callback', _external=True)
-
-  # Use the authorization server's response to fetch the OAuth 2.0 tokens.
-  authorization_response = flask.request.url
-  flow.fetch_token(authorization_response=authorization_response)
-
-  # Store credentials in the session.
-  # ACTION ITEM: In a production app, you likely want to save these
-  #              credentials in a persistent database instead.
-  credentials = flow.credentials
-  flask.session['credentials'] = credentials_to_dict(credentials)
-
-  return flask.redirect(flask.url_for('test_api_request'))
-
-
-@app.route('/revoke')
-def revoke():
-  if 'credentials' not in flask.session:
-    return ('You need to <a href="/authorize">authorize</a> before ' +
-            'testing the code to revoke credentials.')
-
-  credentials = google.oauth2.credentials.Credentials(
-    **flask.session['credentials'])
-
-  revoke = requests.post('https://oauth2.googleapis.com/revoke',
-      params={'token': credentials.token},
-      headers = {'content-type': 'application/x-www-form-urlencoded'})
-
-  status_code = getattr(revoke, 'status_code')
-  if status_code == 200:
-    return('Credentials successfully revoked.' + print_index_table())
-  else:
-    return('An error occurred.' + print_index_table())
-
-
-@app.route('/clear')
-def clear_credentials():
-  if 'credentials' in flask.session:
-    del flask.session['credentials']
-  return ('Credentials have been cleared.<br><br>' +
-          print_index_table())
-
-
-def credentials_to_dict(credentials):
-  return {'token': credentials.token,
-          'refresh_token': credentials.refresh_token,
-          'token_uri': credentials.token_uri,
-          'client_id': credentials.client_id,
-          'client_secret': credentials.client_secret,
-          'scopes': credentials.scopes}
-
-def print_index_table():
-  return ('<table>' +
-          '<tr><td><a href="/test">Test an API request</a></td>' +
-          '<td>Submit an API request and see a formatted JSON response. ' +
-          '    Go through the authorization flow if there are no stored ' +
-          '    credentials for the user.</td></tr>' +
-          '<tr><td><a href="/authorize">Test the auth flow directly</a></td>' +
-          '<td>Go directly to the authorization flow. If there are stored ' +
-          '    credentials, you still might not be prompted to reauthorize ' +
-          '    the application.</td></tr>' +
-          '<tr><td><a href="/revoke">Revoke current credentials</a></td>' +
-          '<td>Revoke the access token associated with the current user ' +
-          '    session. After revoking credentials, if you go to the test ' +
-          '    page, you should see an <code>invalid_grant</code> error.' +
-          '</td></tr>' +
-          '<tr><td><a href="/clear">Clear Flask session credentials</a></td>' +
-          '<td>Clear the access token currently stored in the user session. ' +
-          '    After clearing the token, if you <a href="/test">test the ' +
-          '    API request</a> again, you should go back to the auth flow.' +
-          '</td></tr></table>')
-
-
-if __name__ == '__main__':
-  # When running locally, disable OAuthlib's HTTPs verification.
-  # ACTION ITEM for developers:
-  #     When running in production *do not* leave this option enabled.
-  os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
-  # Specify a hostname and port that are set as a valid redirect URI
-  # for your API project in the Google API Console.
-  app.run('localhost', 5000, debug=True)
-
-    #print(r.text)
-    #return r.text
-#@app.route("/",methods=['GET','POST'])
-#def index():
-#    if request.method == "POST":
-#        # get url that the user has entered
-#        name = request.form['username']
-#       print(name)
-#        passw = request.form['password']
-#        print(passw)         
-#    return render_template('index.html')
+########################   main_user_functn  ###############################
+c=2
+while(c!=0):
+  email=[]
+  name=[]
+  avatar=[]
+  active=[]
+  a_token=[]
+  r_token=[]
+  #created_at=[]
+  old_year=[]
+  old_month=[]
+  old_day=[]
+  old_hour=[]
+  all_user=User.query.all()
+  for i in all_user:
+    email.append(i.email)
+    name.append(i.name)
+    avatar.append(i.avatar)
+    active.append(i.active)
+    test_string=i.tokens
+    res = json.loads(test_string) 
+    a_token.append(res["access_token"])
+    r_token.append(str(res['refresh_token']))
+    times=i.created_at
+    old_year.append(times.year)
+    old_month.append(times.month)
+    old_hour.append((times.hour)*3600+(times.minute)*60+times.second)
+    old_day.append(times.day)
+  new_year=[]
+  new_month=[]
+  new_day=[]
+  new_hour=[]
+  dt=datetime.datetime.today()
+  new_year.append(dt.year)
+  new_month.append(dt.month)
+  new_hour.append((dt.hour)*3600+(dt.minute)*60+dt.second)
+  new_day.append(dt.day)
+  print(all_user)
+  i=0
+  while(c>0):
+    c-=1
+    i=i%len(a_token)
+    #print(r_token[i])
+    current_user_ac=a_token[i]
+    endTimeMillis=int(round(time.time() * 1000))
+    startTimeMillis=endTimeMillis-5000
+    #print(r_token[i],"yhape")
+    #if abs(new_hour[i]-old_hour[i])>=1800:
+    #  print(refresh_token(r_token[i]))
+    #  current_user_ac=refresh_token(r_token[i])
+    if is_sleeping(1584157920000,1584157920001,"ya29.a0AfH6SMB3dO8D7Id6SxY8OBtM-PkHH0tjZSYC7ASSf3zXAdjmzVhGAgBZvdpK39ovzicW22lKa9_WL56fBxmT7lsMsDLCn-qjVNIf5X_YHF3QoRVqHhEoc14-9eQoqvwshHBE4XfemNCpbTg3-rodsitR7k4jlZFdXxFv")==1:
+      print("is sleeping")
+    else:
+      print("not_sleeping")
+    i+=1
