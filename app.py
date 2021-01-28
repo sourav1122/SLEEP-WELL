@@ -66,8 +66,8 @@ def refresh_token(val):
     url = "https://oauth2.googleapis.com/token"
     headers = [
              ("grant_type",  "refresh_token"),
-             ("client_id", "552833547680-pf5eserplcmvsnmt18jp4197ru21u0u5.apps.googleusercontent.com"),
-             ("client_secret", "8x44hBSsgxOwBezTqXqMbNQD"),
+             ("client_id", "dummy_value.apps.googleusercontent.com"),
+             ("client_secret", "dummy_value"),
              ("refresh_token",val),
              ]
 #ya29.a0AfH6SMD9tm8FBT7a7woiFqGb4G4Mn4ZM9gMmGd75YJVSGU9Gyb_dJTUYF9hN3wqkL5FU-6tlos0LGYWaOQ_se9Ub43fT5wWbvy3GaXWsWYFjdjm-50uoECQnu_VHQU6zh7p8huR_MJfohCJCNAJpWriRT8kTcu-XvRk
