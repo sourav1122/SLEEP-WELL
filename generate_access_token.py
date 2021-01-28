@@ -36,8 +36,8 @@ def refresh_token():
     url = "https://oauth2.googleapis.com/token/"
     headers = [
              ("grant_type",  "access_token"),
-             ("client_id", "552833547680-pf5eserplcmvsnmt18jp4197ru21u0u5.apps.googleusercontent.com"),
-             ("client_secret", "8x44hBSsgxOwBezTqXqMbNQD"),
+             ("client_id", "dummy_value.apps.googleusercontent.com"),
+             ("client_secret", "dummy_value"),
              ("refresh_token","1//0grv2p2xFhVucCgYIARAAGBASNwF-L9IrlelcE5TTtkyaxnAf1T2UddBCz3egbyGLzPCBlBF1MEd3CgniF6Lauu8jgwLWSsPr0J0"),
              ]
 #ya29.a0AfH6SMD9tm8FBT7a7woiFqGb4G4Mn4ZM9gMmGd75YJVSGU9Gyb_dJTUYF9hN3wqkL5FU-6tlos0LGYWaOQ_se9Ub43fT5wWbvy3GaXWsWYFjdjm-50uoECQnu_VHQU6zh7p8huR_MJfohCJCNAJpWriRT8kTcu-XvRk
